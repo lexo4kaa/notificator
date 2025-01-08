@@ -15,4 +15,13 @@ public enum MenuCommand {
     private final String command;
     private final String description;
 
+    public static MenuCommand fromCommand(String command) {
+        for (MenuCommand menuCommand : MenuCommand.values()) {
+            if (menuCommand.getCommand().equals(command)) {
+                return menuCommand;
+            }
+        }
+        throw new IllegalArgumentException("No enum constant with command: " + command);
+    }
+
 }
