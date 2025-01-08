@@ -1,6 +1,7 @@
 package com.example.notificator.service;
 
 import com.example.notificator.config.BotConfig;
+import com.example.notificator.model.MenuCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -11,8 +12,9 @@ import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -27,11 +29,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void createCommands() {
-        List<BotCommand> listOfCommands = new ArrayList();
-        listOfCommands.add(new BotCommand("/start", "get a welcome message"));
-        listOfCommands.add(new BotCommand("/mydata", "get data stored"));
-        listOfCommands.add(new BotCommand("/deletedata", "delete data stored"));
-        listOfCommands.add(new BotCommand("/help", "info how to use this bot"));
+        List<BotCommand> listOfCommands = Arrays.stream(MenuCommand.values()).map(command -> new BotCommand(command.getCommand(), command.getDescription())).collect(Collectors.toList());
         try {
             execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
         } catch (TelegramApiException e) {
