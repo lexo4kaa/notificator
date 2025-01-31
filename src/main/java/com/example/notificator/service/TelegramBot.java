@@ -1,13 +1,22 @@
 package com.example.notificator.service;
 
+import com.cronutils.model.definition.CronDefinition;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.model.time.ExecutionTime;
+import com.cronutils.parser.CronParser;
 import com.example.notificator.config.BotConfig;
 import com.example.notificator.model.MenuCommand;
+import com.example.notificator.model.Notification;
+import com.example.notificator.model.NotificationRepository;
 import com.example.notificator.model.User;
 import com.example.notificator.model.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -15,10 +24,14 @@ import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.cronutils.model.CronType.QUARTZ;
 
 @Slf4j
 @Component
@@ -26,6 +39,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private final BotConfig config;
 
@@ -56,12 +72,20 @@ public class TelegramBot extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             MenuCommand command = MenuCommand.fromCommand(messageText);
 
+            if (command == null) {
+                sendTextMessage(chatId, "Sorry, command was not recognized");
+                return;
+            }
+
             switch (command) {
                 case START:
                     startCommandReceived(chatId, update.getMessage().getChat().getUserName());
                     break;
+                case ADD_REMINDER:
+                    addReminderCommandReceived(chatId);
+                    break;
                 default:
-                    sendMessage(chatId, "Sorry, command was not recognized");
+                    sendTextMessage(chatId, "The logic for this command has not yet been implemented");
                     break;
             }
         }
@@ -69,26 +93,58 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void startCommandReceived(Long chatId, String userName) {
         registerUser(chatId, userName);
-        String answer = "Hi, " + userName + ", nice to meet you!";
-        sendMessage(chatId, answer);
+        sendTextMessage(chatId, "Hi, " + userName + ", nice to meet you!");
     }
 
     private void registerUser(Long chatId, String userName) {
         if (userRepository.findById(chatId).isEmpty()) {
-            User user = new User(chatId, userName, new Timestamp(System.currentTimeMillis()));
+            User user = new User();
+            user.setChatId(chatId);
+            user.setUsername(userName);
+            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
             userRepository.save(user);
         }
     }
 
-    private void sendMessage(Long chatId, String textToSend) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(textToSend);
+    private void addReminderCommandReceived(Long chatId) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText("Specify the text/time to send the notification");
+        executeBotApiMethod(sendMessage);
+    }
 
+    private void sendTextMessage(Long chatId, String textToSend) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(textToSend);
+        executeBotApiMethod(sendMessage);
+    }
+
+    private void executeBotApiMethod(BotApiMethod<? extends Serializable> method) {
         try {
-            execute(message);
+            execute(method);
         } catch (TelegramApiException e) {
             log.error(e.getMessage());
+        }
+    }
+
+    @Scheduled(cron = "*/10 * * ? * *")
+    @Transactional
+    protected void sendNotification() {
+        ZonedDateTime time = ZonedDateTime.now();
+        CronDefinition cronDefinition = CronDefinitionBuilder.instanceDefinitionFor(QUARTZ);
+        CronParser cronParser = new CronParser(cronDefinition);
+
+        Iterable<User> users = userRepository.findAll();
+
+        for (User user : users) {
+            for (Notification notification : user.getNotifications()) {
+                String cronExpression = notification.getTime();
+                ExecutionTime executionTime = ExecutionTime.forCron(cronParser.parse(cronExpression));
+                if (executionTime.isMatch(time)) {
+                    sendTextMessage(user.getChatId(), notification.getText());
+                }
+            }
         }
     }
 
