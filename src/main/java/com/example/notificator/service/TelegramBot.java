@@ -5,11 +5,10 @@ import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
 import com.example.notificator.config.BotConfig;
-import com.example.notificator.model.MenuCommand;
 import com.example.notificator.model.Notification;
-import com.example.notificator.model.NotificationRepository;
 import com.example.notificator.model.User;
-import com.example.notificator.model.UserRepository;
+import com.example.notificator.repository.NotificationRepository;
+import com.example.notificator.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,17 +36,16 @@ import static com.cronutils.model.CronType.QUARTZ;
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
-
+    private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
     private final BotConfig config;
 
-    public TelegramBot(BotConfig config) {
+    @Autowired
+    public TelegramBot(BotConfig config, UserRepository userRepository, NotificationRepository notificationRepository) {
         super(config.getToken());
         this.config = config;
+        this.userRepository = userRepository;
+        this.notificationRepository = notificationRepository;
         createCommands();
     }
 
@@ -128,7 +126,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    @Scheduled(cron = "*/10 * * ? * *")
+    @Scheduled(cron = "${job.notification.cron}")
     @Transactional
     protected void sendNotification() {
         ZonedDateTime time = ZonedDateTime.now();

@@ -1,4 +1,4 @@
-package com.example.notificator.model;
+package com.example.notificator.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
