@@ -114,7 +114,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             try {
                 cronParser.parse(messageText);
                 notificationToSave.setTime(messageText);
-                sendTextMessage(chatId, getMessage("request.notification.text"));
+                String textToSend = notificationToSave.getText() == null ? getMessage("request.notification.text") : getAllDataFilledMessage(notificationToSave);
+                sendTextMessage(chatId, textToSend);
             } catch (Exception e) {
                 sendTextMessage(chatId, e.getMessage());
             }
