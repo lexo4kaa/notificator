@@ -8,9 +8,9 @@ import lombok.Getter;
 public enum MenuCommand {
 
     START("/start", "get a welcome message"),
-    MY_DATA("/mydata", "get data stored"),
-    DELETE_DATA("/deletedata", "delete data stored"),
-    ADD_REMINDER("/addreminder", "add reminder"),
+    ADD("/add", "add new reminder"),
+    EDIT("/edit", "edit a reminder that is in the process of being created"),
+    SAVE("/save", "save entered reminder"),
     HELP("/help", "info how to use this bot");
 
     private final String command;
