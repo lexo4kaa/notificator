@@ -3,6 +3,7 @@ package com.example.notificator.service;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
+import com.example.notificator.Constants;
 import com.example.notificator.config.BotConfig;
 import com.example.notificator.dto.NotificationDTO;
 import com.example.notificator.model.Notification;
@@ -40,6 +41,7 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 import static com.cronutils.model.CronType.QUARTZ;
+import static com.example.notificator.Constants.*;
 
 @Slf4j
 @Component
@@ -92,7 +94,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (isUserHasNotificationInProcess(chatId)) {
                     continueNotificationCreationProcess(chatId, messageText);
                 } else {
-                    sendTextMessage(chatId, "Sorry, command was not recognized");
+                    sendTextMessage(chatId, getMessage("response.command.notfound"));
                 }
             } else {
                 processEnteredCommand(update, command, chatId);
@@ -121,7 +123,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (notificationToSave.getText() == null) {
             notificationToSave.setText(messageText);
         }
-        sendTextMessage(chatId, "You have filled in all the required data." + "\nCron-expression: " + notificationToSave.getTime() + "\nNotification text: " + notificationToSave.getText() + "\nIf you want to edit the notification, use the /edit command" + "\nIf you want to save filled data, use the /save command");
+        sendTextMessage(chatId, getAllDataFilledMessage(notificationToSave));
+    }
+
+    private String getAllDataFilledMessage(NotificationDTO notificationToSave) {
+        StringBuilder message = new StringBuilder();
+        message.append(String.format(getMessage("response.data.alldata"), notificationToSave.getTime(), notificationToSave.getText()));
+        message.append(NEW_LINE_STRING);
+        message.append(String.format(getMessage("response.command.usethecommandifyouwant"), MenuCommand.EDIT.getDescription(), MenuCommand.EDIT.getCommand()));
+        message.append(NEW_LINE_STRING);
+        message.append(String.format(getMessage("response.command.usethecommandifyouwant"), MenuCommand.SAVE.getDescription(), MenuCommand.SAVE.getCommand()));
+        return message.toString();
     }
 
     private void processEnteredCommand(Update update, MenuCommand command, Long chatId) {
@@ -142,14 +154,14 @@ public class TelegramBot extends TelegramLongPollingBot {
                 editReminderCommandReceived(chatId);
                 break;
             default:
-                sendTextMessage(chatId, "The logic for this command has not yet been implemented");
+                sendTextMessage(chatId, getMessage("response.command.notimplemented"));
                 break;
         }
     }
 
     private void startCommandReceived(Long chatId, String userName) {
         registerUser(chatId, userName);
-        sendTextMessage(chatId, "Hi, " + userName + ", nice to meet you!");
+        sendTextMessage(chatId, String.format(getMessage("response.user.hi"), userName));
     }
 
     private void registerUser(Long chatId, String userName) {
@@ -169,9 +181,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void getAllRemindersCommandReceived(Long chatId) {
         User user = userRepository.getByChatIdWithNotifications(chatId);
-        StringBuilder textToSend = new StringBuilder("Here are all the saved reminders:");
+        StringBuilder textToSend = new StringBuilder(getMessage("response.notification.getall"));
         for (Notification notification : user.getNotifications()) {
-            textToSend.append("\n").append("#").append(notification.getId()).append(":").append(" ").append(notification.getText()).append("\t").append(notification.getTime());
+            textToSend.append(NEW_LINE_STRING).append(SHARP_STRING).append(notification.getId()).append(Constants.COLON_STRING).append(Constants.SPACE_STRING).append(notification.getText()).append(TAB_STRING).append(notification.getTime());
         }
         sendTextMessage(chatId, textToSend.toString());
     }
@@ -179,15 +191,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void saveReminderCommandReceived(Long chatId) {
         NotificationDTO notificationToSave = userNotificationsDuringCreation.get(chatId);
         if (notificationToSave == null) {
-            sendTextMessage(chatId, "You have not started the creation process, use the " + MenuCommand.ADD.getCommand() + " command for this");
+            sendTextMessage(chatId, String.format(getMessage("response.command.useaddbefore"), MenuCommand.ADD.getCommand()));
             return;
         }
         if (notificationToSave.getTime() == null || notificationToSave.getText() == null) {
-            sendTextMessage(chatId, "You need to fill all the data. Current notification values: " + "\nCron-expression: " + notificationToSave.getTime() + "\nNotification text: " + notificationToSave.getText());
+            sendTextMessage(chatId, String.format(getMessage("response.data.notalldata"), notificationToSave.getTime(), notificationToSave.getText()));
             return;
         }
         saveNotification(notificationToSave, chatId);
-        sendTextMessage(chatId, "Notification has been saved.");
+        sendTextMessage(chatId, getMessage("response.notification.saved"));
     }
 
     private void saveNotification(NotificationDTO notificationToSave, Long chatId) {
@@ -201,19 +213,19 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void editReminderCommandReceived(Long chatId) {
         NotificationDTO notificationToSave = userNotificationsDuringCreation.get(chatId);
         if (notificationToSave == null) {
-            sendTextMessage(chatId, "You have not started the creation process, use the " + MenuCommand.ADD.getCommand() + " command for this");
+            sendTextMessage(chatId, String.format(getMessage("response.command.useaddbefore"), MenuCommand.ADD.getCommand()));
             return;
         }
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
-        sendMessage.setText("What exactly do you want to edit?");
+        sendMessage.setText(getMessage("request.notification.whattoedit"));
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(getInlineKeyboardButton("Notification text", EDIT_TEXT_CALLBACK_DATA));
-        row.add(getInlineKeyboardButton("Cron expression", EDIT_CRON_CALLBACK_DATA));
+        row.add(getInlineKeyboardButton(getMessage("button.text"), EDIT_TEXT_CALLBACK_DATA));
+        row.add(getInlineKeyboardButton(getMessage("button.cron"), EDIT_CRON_CALLBACK_DATA));
         rows.add(row);
         markup.setKeyboard(rows);
         sendMessage.setReplyMarkup(markup);
@@ -290,7 +302,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private String getMessage(String message) {
-        return ResourceBundle.getBundle("messages", locale).getString(message);
+        return ResourceBundle.getBundle(MESSAGES_FILE_NAME, locale).getString(message);
     }
 
 }
