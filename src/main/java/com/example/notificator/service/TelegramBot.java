@@ -132,6 +132,9 @@ public class TelegramBot extends TelegramLongPollingBot {
             case ADD:
                 addReminderCommandReceived(chatId);
                 break;
+            case GET_ALL:
+                getAllRemindersCommandReceived(chatId);
+                break;
             case SAVE:
                 saveReminderCommandReceived(chatId);
                 break;
@@ -162,6 +165,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void addReminderCommandReceived(Long chatId) {
         userNotificationsDuringCreation.put(chatId, new NotificationDTO());
         sendTextMessage(chatId, getMessage("request.notification.cron"));
+    }
+
+    private void getAllRemindersCommandReceived(Long chatId) {
+        User user = userRepository.getByChatIdWithNotifications(chatId);
+        StringBuilder textToSend = new StringBuilder("Here are all the saved reminders:");
+        for (Notification notification : user.getNotifications()) {
+            textToSend.append("\n").append("#").append(notification.getId()).append(":").append(" ").append(notification.getText()).append("\t").append(notification.getTime());
+        }
+        sendTextMessage(chatId, textToSend.toString());
     }
 
     private void saveReminderCommandReceived(Long chatId) {
