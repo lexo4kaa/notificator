@@ -2,19 +2,18 @@ package com.example.notificator.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Entity(name = "users")
 @Getter
 @Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @ToString
 public class User {
 
@@ -22,5 +21,9 @@ public class User {
     private Long chatId;
     private String username;
     private Timestamp registeredAt;
+
+    @OneToMany
+    @JoinColumn(name = "userId")
+    private List<Notification> notifications;
 
 }

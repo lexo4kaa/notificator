@@ -1,4 +1,4 @@
-package com.example.notificator.model;
+package com.example.notificator.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,8 +8,9 @@ import lombok.Getter;
 public enum MenuCommand {
 
     START("/start", "get a welcome message"),
-    MY_DATA("/mydata", "get data stored"),
-    DELETE_DATA("/deletedata", "delete data stored"),
+    ADD("/add", "add new reminder"),
+    EDIT("/edit", "edit a reminder that is in the process of being created"),
+    SAVE("/save", "save entered reminder"),
     HELP("/help", "info how to use this bot");
 
     private final String command;
@@ -21,7 +22,7 @@ public enum MenuCommand {
                 return menuCommand;
             }
         }
-        throw new IllegalArgumentException("No enum constant with command: " + command);
+        return null;
     }
 
 }
