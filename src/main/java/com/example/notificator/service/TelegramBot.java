@@ -212,6 +212,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         notification.setText(notificationToSave.getText());
         notification.setUser(userRepository.getByChatId(chatId));
         notificationRepository.save(notification);
+        userNotificationsDuringCreation.remove(chatId);
     }
 
     private void deleteReminderCommandReceived(Long chatId) {
