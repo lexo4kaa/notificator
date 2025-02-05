@@ -151,6 +151,9 @@ public class TelegramBot extends TelegramLongPollingBot {
             case SAVE:
                 saveReminderCommandReceived(chatId);
                 break;
+            case DELETE:
+                deleteReminderCommandReceived(chatId);
+                break;
             case EDIT:
                 editReminderCommandReceived(chatId);
                 break;
@@ -211,6 +214,36 @@ public class TelegramBot extends TelegramLongPollingBot {
         notificationRepository.save(notification);
     }
 
+    private void deleteReminderCommandReceived(Long chatId) {
+        User user = userRepository.getByChatIdWithNotifications(chatId);
+        List<Notification> notifications = user.getNotifications();
+
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(getMessage("request.notification.whattodelete"));
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        for (int i = 0; i < Math.ceil((double) notifications.size() / 3); i++) {
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            for (int j = 0; j < 3; j++) { // todo? make it customizable (3/4/5 in a row)
+                int notificationIndex = i * 3 + j;
+                if (notificationIndex >= notifications.size()) {
+                    break;
+                }
+                Long notificationId = notifications.get(notificationIndex).getId();
+                String text = SHARP_STRING + notificationId;
+                String callbackData = MenuCommand.DELETE.getCommand() + SPACE_STRING + notificationId;
+                row.add(getInlineKeyboardButton(text, callbackData));
+            }
+            rows.add(row);
+        }
+        markup.setKeyboard(rows);
+        sendMessage.setReplyMarkup(markup);
+
+        executeBotApiMethod(sendMessage);
+    }
+
     private void editReminderCommandReceived(Long chatId) {
         NotificationDTO notificationToSave = userNotificationsDuringCreation.get(chatId);
         if (notificationToSave == null) {
@@ -248,7 +281,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         EditMessageText messageText = new EditMessageText();
         messageText.setChatId(chatId);
         messageText.setMessageId(getMessageIdFromCallback(callbackQuery));
-        switch (callbackQuery.getData()) {
+        String callbackQueryData = callbackQuery.getData();
+        switch (callbackQueryData) {
             case EDIT_TEXT_CALLBACK_DATA:
                 userNotificationsDuringCreation.get(chatId).setText(null);
                 messageText.setText(getMessage("request.notification.text"));
@@ -257,6 +291,15 @@ public class TelegramBot extends TelegramLongPollingBot {
                 userNotificationsDuringCreation.get(chatId).setTime(null);
                 messageText.setText(getMessage("request.notification.cron"));
                 break;
+        }
+        if (callbackQueryData.startsWith(MenuCommand.DELETE.getCommand())) {
+            Long idToDelete = Long.parseLong(callbackQueryData.split(SPACE_STRING)[1]);
+            if (userRepository.hasNotification(chatId, idToDelete)) {
+                notificationRepository.deleteById(idToDelete);
+                messageText.setText(String.format(getMessage("response.notification.deleted"), idToDelete));
+            } else {
+                messageText.setText(String.format(getMessage("response.notification.notfound")));
+            }
         }
         executeBotApiMethod(messageText);
     }
