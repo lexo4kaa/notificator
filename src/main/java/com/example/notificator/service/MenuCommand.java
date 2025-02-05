@@ -12,6 +12,7 @@ public enum MenuCommand {
     ADD("/add", "add new reminder"),
     EDIT("/edit", "edit the entered reminder"),
     SAVE("/save", "save the entered reminder"),
+    DELETE("/delete", "delete the reminder"),
     HELP("/help", "info how to use this bot");
 
     private final String command;

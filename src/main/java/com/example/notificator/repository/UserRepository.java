@@ -9,4 +9,8 @@ public interface UserRepository extends CrudRepository<User, Long> {
 
     @Query("select u from users u join fetch u.notifications where u.chatId = :id")
     User getByChatIdWithNotifications(Long id);
+
+    @Query("select count(u) > 0 from users u join u.notifications n where u.chatId = :chatId and n.id = :notificationId")
+    boolean hasNotification(Long chatId, Long notificationId);
+
 }
