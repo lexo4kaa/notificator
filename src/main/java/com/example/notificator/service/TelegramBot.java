@@ -50,6 +50,8 @@ import static com.example.notificator.Constants.*;
 public class TelegramBot extends TelegramLongPollingBot {
     private static final String EDIT_TEXT_CALLBACK_DATA = "EDIT_TEXT";
     private static final String EDIT_CRON_CALLBACK_DATA = "EDIT_CRON";
+    private static final String SET_RU_LOCALE_CALLBACK_DATA = "SET_RU_LOCALE";
+    private static final String SET_EN_LOCALE_CRON_CALLBACK_DATA = "SET_EN_LOCALE";
     private static final int DEFAULT_OPTIONS_IN_LINE_TO_DELETE = 3;
 
     private final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
@@ -161,6 +163,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 break;
             case EDIT:
                 editReminderCommandReceived(chatId);
+                break;
+            case SWITCH:
+                switchLocaleCommandReceived(chatId);
                 break;
             default:
                 sendTextMessage(chatId, getMessage("response.command.notimplemented"));
@@ -281,6 +286,23 @@ public class TelegramBot extends TelegramLongPollingBot {
         return textButton;
     }
 
+    private void switchLocaleCommandReceived(Long chatId) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(getMessage("request.locale.select"));
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(getInlineKeyboardButton("Русский", SET_RU_LOCALE_CALLBACK_DATA));
+        row.add(getInlineKeyboardButton("English", SET_EN_LOCALE_CRON_CALLBACK_DATA));
+        rows.add(row);
+        markup.setKeyboard(rows);
+        sendMessage.setReplyMarkup(markup);
+
+        executeBotApiMethod(sendMessage);
+    }
+
     private void processCallbackQuery(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         Long chatId = callbackQuery.getMessage().getChatId();
@@ -297,6 +319,14 @@ public class TelegramBot extends TelegramLongPollingBot {
             case EDIT_CRON_CALLBACK_DATA:
                 userNotificationsDuringCreation.get(chatId).setTime(null);
                 messageText.setText(getMessage("request.notification.cron"));
+                break;
+            case SET_RU_LOCALE_CALLBACK_DATA:
+                locale = new Locale("ru", "RU");
+                messageText.setText(getMessage("response.locale.updated"));
+                break;
+            case SET_EN_LOCALE_CRON_CALLBACK_DATA:
+                locale = new Locale("en", "US");
+                messageText.setText(getMessage("response.locale.updated"));
                 break;
         }
         if (callbackQueryData.startsWith(MenuCommand.DELETE.getCommand())) {

@@ -13,6 +13,7 @@ public enum MenuCommand {
     EDIT("/edit", "edit the entered reminder"),
     SAVE("/save", "save the entered reminder"),
     DELETE("/delete", "delete the reminder"),
+    SWITCH("/switch", "switch locale"),
     HELP("/help", "info how to use this bot");
 
     private final String command;
