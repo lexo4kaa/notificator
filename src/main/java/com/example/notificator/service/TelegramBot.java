@@ -12,6 +12,7 @@ import com.example.notificator.repository.NotificationRepository;
 import com.example.notificator.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
@@ -48,11 +50,13 @@ import static com.example.notificator.Constants.*;
 public class TelegramBot extends TelegramLongPollingBot {
     private static final String EDIT_TEXT_CALLBACK_DATA = "EDIT_TEXT";
     private static final String EDIT_CRON_CALLBACK_DATA = "EDIT_CRON";
+    private static final int DEFAULT_OPTIONS_IN_LINE_TO_DELETE = 3;
 
     private final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final BotConfig config;
+    private final Environment environment;
     /**
      * key - chat id, value - notification that should be saved
      */
@@ -61,11 +65,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     private Locale locale = new Locale("en", "US");
 
     @Autowired
-    public TelegramBot(BotConfig config, UserRepository userRepository, NotificationRepository notificationRepository) {
+    public TelegramBot(BotConfig config, UserRepository userRepository, NotificationRepository notificationRepository, Environment environment) {
         super(config.getToken());
         this.config = config;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
+        this.environment = environment;
         createCommands();
     }
 
@@ -212,6 +217,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         notification.setText(notificationToSave.getText());
         notification.setUser(userRepository.getByChatId(chatId));
         notificationRepository.save(notification);
+        userNotificationsDuringCreation.remove(chatId);
     }
 
     private void deleteReminderCommandReceived(Long chatId) {
@@ -224,10 +230,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        for (int i = 0; i < Math.ceil((double) notifications.size() / 3); i++) {
+        int optionsInLine = Optional.ofNullable(environment.getProperty("display.delete.optionsinline")).map(Integer::parseInt).orElse(DEFAULT_OPTIONS_IN_LINE_TO_DELETE);
+        for (int i = 0; i < Math.ceil((double) notifications.size() / optionsInLine); i++) {
             List<InlineKeyboardButton> row = new ArrayList<>();
-            for (int j = 0; j < 3; j++) { // todo? make it customizable (3/4/5 in a row)
-                int notificationIndex = i * 3 + j;
+            for (int j = 0; j < optionsInLine; j++) {
+                int notificationIndex = i * optionsInLine + j;
                 if (notificationIndex >= notifications.size()) {
                     break;
                 }
