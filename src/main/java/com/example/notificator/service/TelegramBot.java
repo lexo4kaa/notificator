@@ -231,7 +231,6 @@ public class TelegramBot extends TelegramLongPollingBot {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         int optionsInLine = Optional.ofNullable(environment.getProperty("display.delete.optionsinline")).map(Integer::parseInt).orElse(DEFAULT_OPTIONS_IN_LINE_TO_DELETE);
-        System.out.println(optionsInLine);
         for (int i = 0; i < Math.ceil((double) notifications.size() / optionsInLine); i++) {
             List<InlineKeyboardButton> row = new ArrayList<>();
             for (int j = 0; j < optionsInLine; j++) {
